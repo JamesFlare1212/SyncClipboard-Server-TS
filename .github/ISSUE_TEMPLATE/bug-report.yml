@@ -1,54 +1,22 @@
-name: 报告程序错误 | Bug report
-description: Create a report to help us improve
+name: 服务端错误 | Server bug report
+description: Report a SyncClipboard Server problem
 labels: ["bug report"]
 body:
-- type: textarea
-  attributes:
-    label: 错误描述 | Describe the bug
-  validations:
-    required: true
-- type: textarea
-  attributes:
-    label: 复现步骤 | Steps to Reproduce
-  validations:
-    required: true
-- type: textarea
-  attributes:
-    label: 截图 | Screenshots
-  validations: 
-    required: false
-- type: input
-  attributes:
-    label: 服务端信息 | Server
-    description: 'Docker/WebDAV(坚果云, Nextcloud, or …)/独立服务器/客户端内置'
-  validations:
-    required: true
-- type: input
-  attributes:
-    label: 桌面端操作系统 | Desktop OS
-    description: 'OS: [e.g. Windows 10 22H2, MacOS 11, Ubuntu Linux 22.0]'
-  validations:
-    required: false
-- type: input
-  attributes:
-    label: 桌面端SyncClipboard版本 | Desktop SyncClipboard Version
-    description: 'Synclipboard Version: [e.g. v2.7.0]'
-  validations:
-    required: false
-- type: textarea
-  attributes:
-    label: 日志文件 | Log File
-    description: '`%AppData%\SyncClipboard\log\`(Windows), `~/Library/Application Support/SyncClipboard/log/`(macOS), `~/.config/SyncClipboard/log/`(Linux)'
-  validations: 
-    required: false
-- type: input
-  attributes:
-    label: 移动端信息 | Smartphone
-    description: 'Device: [e.g. Xiaomi 12, MIUI 11, Andoird 11], Tool: [e.g. Http Request Shortcuts]'
-  validations:
-    required: false
-- type: textarea
-  attributes:
-    label: 其他附加信息 | Additional context
-  validations:
-    required: false
+  - type: textarea
+    attributes:
+      label: 错误描述与复现步骤 | Description and steps to reproduce
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: 服务端和 Bun 版本 | Server and Bun versions
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: 部署环境 | Deployment environment
+      description: OS, architecture, Docker or native Bun
+  - type: textarea
+    attributes:
+      label: 服务端日志 | Server logs
+      description: Remove passwords and private clipboard contents before posting.

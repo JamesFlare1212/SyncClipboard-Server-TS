@@ -1,0 +1,37 @@
+{
+  "name": "syncclipboard-server",
+  "version": "3.3.3",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.4",
+  "engines": {
+    "bun": ">=1.4.4"
+  },
+  "scripts": {
+    "start": "bun src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "test": "bun test",
+    "test:bundle": "bun run build && SYNCCLIPBOARD_TEST_BUNDLE=dist/index.js bun test test/cli.test.ts",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write src test package.json tsconfig.json appsettings.example.json .prettierrc.json .github/workflows/*.yml docker-compose.yml",
+    "format:check": "prettier --check src test package.json tsconfig.json appsettings.example.json .prettierrc.json .github/workflows/*.yml docker-compose.yml",
+    "check": "bun run typecheck && bun run format:check && bun test",
+    "build": "bun build src/index.ts --target=bun --outdir=dist"
+  },
+  "dependencies": {
+    "busboy": "^1.6.0",
+    "jsonc-parser": "^3.3.1",
+    "swagger-ui-dist": "^5.34.0",
+    "yauzl": "^3.4.0",
+    "yazl": "^3.3.1"
+  },
+  "devDependencies": {
+    "@microsoft/signalr": "^10.0.11",
+    "@types/bun": "^1.4.4",
+    "@types/busboy": "^1.5.5",
+    "@types/yauzl": "^3.4.0",
+    "@types/yazl": "^3.3.1",
+    "prettier": "^3.9.10",
+    "typescript": "^7.0.2"
+  }
+}

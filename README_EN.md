@@ -1,372 +1,112 @@
-# SyncClipboard
+# SyncClipboard Server
 
-[中文](README.md) | English
+[中文](README.md)
 
-<details>
-<summary>Contents</summary>
+A standalone **Bun + TypeScript** SyncClipboard server with HTTP/WebDAV-compatible clipboard synchronization, SignalR notifications, SQLite history, and attachment storage. This repository contains only the server.
 
-- [SyncClipboard](#syncclipboard)
-  - [Features](#features)
-  - [Breaking Changes](#breaking-changes)
-    - [v3.1.1](#v311)
-  - [Client](#client)
-    - [Windows](#windows)
-      - [Installer](#installer)
-      - [Portable Version](#portable-version)
-      - [WinGet](#winget)
-      - [Troubleshooting](#troubleshooting)
-    - [macOS](#macos)
-      - [Manual Installation](#manual-installation)
-      - [Homebrew](#homebrew)
-      - [Troubleshooting](#troubleshooting-1)
-    - [Linux](#linux)
-      - [Manual Installation](#manual-installation-1)
-      - [Arch Linux](#arch-linux)
-      - [Troubleshooting](#troubleshooting-2)
-    - [Desktop Client Command Line Arguments](#desktop-client-command-line-arguments)
-      - [--shutdown-previous](#--shutdown-previous)
-      - [--command-{command-name}](#--command-command-name)
-    - [IOS](#ios)
-      - [Use Shortcuts](#use-shortcuts)
-    - [Android](#android)
-      - [Use SyncClipboard Mobile](#use-syncclipboard-mobile)
-    - [HarmonyOS Next](#harmonyos-next)
-      - [Use ClipLink](#use-cliplink)
-    - [Notes for Clients](#notes-for-clients)
-  - [Server](#server)
-    - [Standalone Server](#standalone-server)
-      - [Server Configuration](#server-configuration)
-      - [Docker](#docker)
-      - [Arch Linux](#arch-linux-1)
-    - [Desktop Client Built-in Server](#desktop-client-built-in-server)
-    - [WebDAV Server](#webdav-server)
-    - [S3 Server](#s3-server)
-  - [API](#api)
-    - [Get Clipboard](#get-clipboard)
-    - [Upload Clipboard](#upload-clipboard)
-    - [SyncClipboard.json](#syncclipboardjson)
-    - [S3 Sync Protocol Specification](#s3-sync-protocol-specification)
-  - [Open Source Dependencies](#open-source-dependencies)
-  - [Donate](#donate)
+## Run
 
-</details>
+Requires Bun 1.4.4 or newer:
 
-## Features
-
-- Cross-platform (Windows/macOS/Linux/mobile) real-time clipboard syncing, clipboard history management, and history syncing.
-- Supports desktop client built-in server, Docker-deployed server, or storage services compatible with WebDAV/S3 APIs.
-- Community-developed clients and tools built on the SyncClipboard API.
-- Optimize image type clipboard:
-  - Paste image to a textbox directly after copying a image file from file system, and vice versa.
-  - Download the original file and copy it after copying a image in web browser. This is helpful for copying an animated image in browser. Web sites always prevent downloads from non-browser, so this feature isn't always usable.
-  - Copy the transcoded temporary image file (jpg or gif) after copying a modern image file type (heic, webp, etc.).
-
-
-> [!WARNING]  
-> The clipboard history feature is in its early stages. Please be prepared for the possibility of losing all information. Do not rely solely on this tool to save important information.
->
-
-## Breaking Changes
-### [v3.1.1](https://github.com/Jeric-X/SyncClipboard/issues/286)
-Clients and servers v3.1.1 and above are incompatible with previous versions. All clients, servers, and third-party clients in the sync network need to be upgraded together.
-
-## Client
-
-Clipboard is auto-synced between desktop clients running on Windows/Linux/macOS.
-
-<details>
-<summary>Screenshots</summary>
-
-![](docs/image/WinUI_EN.png)
-
-</details>
-
-### Windows
-#### Installer
-
-Download the exe installer starting with `SyncClipboard_win_` from the [Release](https://github.com/Jeric-X/SyncClipboard/releases/latest) page. Double-click to run the installer and it will be ready to use.
-
-#### Portable Version
-
-Download the zip file starting with `SyncClipboard_win_` from the [Release](https://github.com/Jeric-X/SyncClipboard/releases/latest) page. Extract it and run `SyncClipboard.exe`.
-
-#### WinGet
-
-```powershell
-winget install --id JericX.SyncClipboard --exact --source winget
+```sh
+bun install --frozen-lockfile
+SYNCCLIPBOARD_USERNAME=myuser SYNCCLIPBOARD_PASSWORD=mypassword bun start
 ```
 
-#### Troubleshooting
-- The minimum supported OS version is Windows 10 2004.
-- If the interface icons are displayed incorrectly on Windows 10, download and install the Microsoft [Segoe Fluent Icons](https://aka.ms/SegoeFluentIcons) font.
+The default endpoint is `http://0.0.0.0:5033`, and the data directory is `server/` under the working directory. Every endpoint requires Basic authentication. Unconfigured credentials default to `admin` / `admin`; set your own credentials through environment variables or configuration.
 
-### macOS
-
-#### Manual Installation
-Download the installation package starting with `SyncClipboard_macos_` from the [Release](https://github.com/Jeric-X/SyncClipboard/releases/latest) page. Double-click it and drag the SyncClipboard icon to the Applications folder.
-
-#### Homebrew
-
-```shell
-brew install --cask Jeric-X/tap/syncclipboard
+```sh
+bun start --port 5033 --host 127.0.0.1 --data-dir ./server
+bun run build
+bun dist/index.js --data-dir ./server
 ```
 
-#### Troubleshooting
-- System prompts `“SyncClipboard” cannot be opened because the developer cannot be verified`: Go to `Settings` -> `Privacy & Security` on macOS, and click `Open Anyway`.
-- System prompts `"SyncClipboard" is damaged, can't be opened`: Run the following command in the terminal: `sudo xattr -d com.apple.quarantine /Applications/SyncClipboard.app`
-- Some features require Accessibility permissions. SyncClipboard will prompt for authorization when needed. If permission has been granted in System Settings but SyncClipboard still reports it as missing, remove SyncClipboard from the Accessibility permissions list, then restart SyncClipboard to request permission again.
+The JavaScript bundle includes runtime dependencies and local Swagger UI assets. Copy it to a machine with Bun to run it without installing npm packages. Logs use stdout/stderr; SIGINT and SIGTERM stop the server and close SQLite.
 
-### Linux
-#### Manual Installation
-Download the installation package starting with `SyncClipboard_linux_` from the [Release](https://github.com/Jeric-X/SyncClipboard/releases/latest) page.
+## Docker
 
-#### Arch Linux
-
-Arch Linux users can directly install from [AUR](https://aur.archlinux.org/packages/syncclipboard-desktop) (maintained by [@devome](https://github.com/devome)):
-
-```shell
-paru -Sy syncclipboard-desktop
-```
-
-After installation, you can launch it from the menu. If launching via the command `syncclipboard-desktop` results in an error, set the environment variable `LANG` to `en_US.UTF-8` or just start it using `LANG=en_US.UTF-8 syncclipboard-desktop`.
-
-#### Troubleshooting
-
-- Requires **glibc 2.38 or later**. Run `ldd --version` to check your installed version.
-- Clipboard sync is delayed, fails, or uploads garbled text: It is recommended to install `xclip` (for X11) or `wl-clipboard` (for Wayland) on your system. SyncClipboard will use these tools to help access the clipboard and improve stability. Use the commands `xclip -version` or `wl-paste -version` to check if they are installed.
-- When upgrading using `deb` or `rpm` installation packages, if the upgrade fails, please uninstall the old version before installing the new one.
-- When using the `AppImage` package, please ensure that the AppImage file has executable permissions.
-- If hotkeys or copy/paste operations indirectly triggered through SyncClipboard fail on Wayland, check [input device permissions](docs/Linux-Input-Permissions_EN.md) first.
-- The language cannot be auto-detected and defaults to English. You can change the language in SyncClipboard's settings after launching.
-
-> [!NOTE]  
-> To completely remove SyncClipboard, manually delete the configuration and temporary file directories:  
-> `%AppData%\SyncClipboard\` (Windows), `~/Library/Application Support/SyncClipboard/` (macOS), `~/.config/SyncClipboard/` (Linux)
-
-### Desktop Client Command Line Arguments
-
-#### --shutdown-previous
-Closes any running instance of SyncClipboard and starts a new one.
-
-#### --command-{command-name}
-Executes the specified command, where `{command-name}` is the name of the command. After setting a shortcut key, you can view the corresponding command name in the configuration file. Even if the shortcut key configuration is cleared, the command line argument remains valid.  
-If a SyncClipboard instance is already running, it will not start a new instance but will instruct the running SyncClipboard to execute the command. If no instance is running, the command will be executed immediately after startup.  
-Multiple `--command-{command-name}` arguments are supported, multiple commands are executed simultaneously.  
-
-> [!NOTE]  
-> When using command line arguments on macOS, please use the full path to the executable: `/Applications/SyncClipboard.app/Contents/MacOS/SyncClipboard.Desktop.MacOS`
-
-### IOS 
-#### Use [Shortcuts](https://apps.apple.com/us/app/shortcuts/id1462947752)  
-
-> [!WARNING]
-> When importing the shortcut, you may be unable to edit the server information ([#306](https://github.com/Jeric-X/SyncClipboard/issues/306)). You can import it without changing the server information first, then edit the server information in the shortcut afterward.
->
-
-- Sync manually, import this [Shortcut](https://www.icloud.com/shortcuts/321944d62831416f9d2ba7917917686a)
-- Sync Automatically, import this [Shortcut](https://www.icloud.com/shortcuts/05e7ac5aca5f4f588b776117cf740587). This shortcut keeps running in the background forever, you need to stop it manually. You can also change whether to send notifications and querying interval time manullay.
-
-### Android
-#### Use [SyncClipboard Mobile](https://github.com/Jeric-X/syncclipboard-mobile)
-
-- Quick manual trigger from notification center, home screen shortcut, and share menu
-- Limited background sync capability
-- Clipboard history and history sync
-- Auto-upload SMS verification codes
-
-### HarmonyOS Next
-#### Use [ClipLink](https://github.com/xiebaiyuan/ClipLink)
-
-A HarmonyOS Next client. Download the `.hap` file from [Releases](https://github.com/xiebaiyuan/ClipLink/releases) and install via [auto-installer](https://github.com/likuai2010/auto-installer) or `hdc install` (sideloading required due to HarmonyOS restrictions).
-
-### Notes for Clients
-
-There are three necessery config(maybe different words, same uses).
-- username
-- password
-- url, format is `http://ip(or domain name):port`. When using a WebDav server, url needs to be pointed to a specific existing folder as the working folder, like `https://domain.com/dav/folder1/working%20folder`. File name is the best not to contain any special characters or spaces, or you'll have to URL encode it. And do not use this folder to do anything else. If not using a desktop client(Windows/Linux/macOS), create a folder named `file` in the working folder to sync files. Desktop clients create this folder automatically. Make sure no slash(/) at the end of url.
-
-## Server
-### Standalone Server
-[SyncClipboard.Server](https://github.com/Jeric-X/SyncClipboard/releases/) is cross-platform, depends on [ASP.NET Core 10.0](https://dotnet.microsoft.com/en-us/download/dotnet/10.0). Run with:
-```
-dotnet /path/to/SyncClipboard.Server.dll --contentRoot ./
-```
-Content root folder is `SyncClipboard.Server.dll`'s parent folder. Writing permission is needed. Choosing a different content root folder is possible. Copy a new `appsettings.json` to the folder and run with:
-```
-dotnet /path/to/SyncClipboard.Server.dll --contentRoot /path/to/contentRoot
-```
-
-#### Server Configuration
-`appsettings.json` is the config file.
-```jsonc
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "AllowedHosts": "*",
-  "Kestrel": {
-    "Endpoints": {
-      "http": {
-        "Url": "http://*:5033"
-      },
-      //"https": {
-      //  "Url": "https://*:5033"
-      //}
-    },
-    //"Certificates": {
-    //  "Default": {
-    //    "Path": "/path/to/pem",
-    //    "KeyPath": "/path/to/pem_key"
-    //  }
-    //}
-  },
-  "AppSettings": {
-    "UserName": "your_username",
-    "Password": "your_password",
-    "MaxSavedHistoryCount": 1000, // Maximum history count; 0 means no count limit. The retention time limit still applies.
-    "HistoryRetentionMinutes": 0 // Retention in minutes; 0 means no time limit. The history count limit still applies.
-  }
-}
-```
-For more information, please refer to the [official Microsoft documentation](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel/endpoints?view=aspnetcore-10.0#configure-https-in-appsettingsjson).
-
-Username and password can be set by environment variables. When the environment variables `SYNCCLIPBOARD_USERNAME` and `SYNCCLIPBOARD_PASSWORD` are both set, they will be used as the username and password.  
-
-`ASPNETCORE_hostBuilder__reloadConfigOnChange` is used to configure whether to automatically detect changes in `appsettings.json` and reload the configuration. The default value is false. Changing it to any value other than false will enable this feature.
-
-> [!WARNING]  
-> HTTP transmits data in plaintext. When deploying the server on a public network, please enable HTTPS or configure HTTPS using a reverse proxy tool. If obtaining a certificate from a certificate authority is not possible, it is recommended to use the open-source tool [mkcert](https://github.com/FiloSottile/mkcert) or other methods to generate a self-signed certificate.
-
-#### Docker
-
-```shell
-# docker
-docker run -d \
-  --name=syncclipboard-server \
+```sh
+docker build -t syncclipboard-server .
+docker run -d --name syncclipboard-server \
   -p 5033:5033 \
-  -e SYNCCLIPBOARD_USERNAME=your_username \
-  -e SYNCCLIPBOARD_PASSWORD=your_password \
-  -v /data/syncclipboard-server:/app/data \
-  --restart unless-stopped \
-  jericx/syncclipboard-server:latest
-
-# docker compose
-curl -sL https://github.com/Jeric-X/SyncClipboard/raw/master/src/SyncClipboard.Server/docker-compose.yml >> docker-compose.yml
-docker compose up -d
+  -e SYNCCLIPBOARD_USERNAME=myuser \
+  -e SYNCCLIPBOARD_PASSWORD=mypassword \
+  -v syncclipboard-data:/app/server \
+  --restart unless-stopped syncclipboard-server
 ```
 
-After the container starts for the first time, a default `appsettings.json` will be automatically created in the container directory `/app/data` (which corresponds to the host directory `/data/syncclipboard-server`).  
-When modifying `appsettings.json`, pay attention to the file path mapping between the container and the host.
+Alternatively, set the two credential variables and run `docker compose up -d --build`. The container runs as the `bun` user; existing bind-mounted data must be writable by that user. Mount configuration at `/app/appsettings.json`.
 
-#### Arch Linux
+CI checks types, formatting, tests, bundles, and Docker builds. Pushing a `v*` tag runs validation and publishes a GitHub Release bundle plus amd64/arm64 images at `ghcr.io/<owner>/<repository>`.
 
-You can install it directly from [AUR](https://aur.archlinux.org/packages/syncclipboard-server) (maintained by [@devome](https://github.com/devome)):
+## Configuration
 
-```shell
-paru -Sy syncclipboard-server
-```
+Copy `appsettings.example.json` to `appsettings.json`. The original `AppSettings.UserName`, `Password`, `MaxSavedHistoryCount`, `HistoryRetentionMinutes`, and `Kestrel.Endpoints.<name>.Url` fields are supported, including JSON comments and trailing commas.
 
-The configuration file path is `/etc/syncclipboard/appsettings.json`. After modifying the configuration, you can start the service using `systemctl` command:
+| Environment variable | Purpose / default |
+| --- | --- |
+| `SYNCCLIPBOARD_USERNAME`, `SYNCCLIPBOARD_PASSWORD` | Override credentials when both are nonempty |
+| `AppSettings__UserName`, `AppSettings__Password` | Override individual configuration fields |
+| `HOST`, `PORT` | Listen address/port; default `0.0.0.0:5033` |
+| `ASPNETCORE_URLS` | Legacy single HTTP/HTTPS endpoint URL |
+| `SYNCCLIPBOARD_CONFIG` | Configuration file; default `appsettings.json` |
+| `SYNCCLIPBOARD_DATA_DIR` | Data directory; default `server/` |
+| `AppSettings__MaxSavedHistoryCount` | Active record limit; default `1000`, `0` means unlimited |
+| `AppSettings__HistoryRetentionMinutes` | Retention duration; default `0` means unlimited |
+| `SYNCCLIPBOARD_MAX_BODY_BYTES` | Request byte limit; default `2147483647` |
+| `SYNCCLIPBOARD_MAX_EXTRACTED_BYTES` | ZIP expanded byte limit; default `2147483647` |
+| `SYNCCLIPBOARD_MAX_ARCHIVE_ENTRIES` | ZIP entry limit; default `100000` |
+| `SYNCCLIPBOARD_SWAGGER` | `true` enables `/swagger` and `/openapi.json` |
+| `SYNCCLIPBOARD_TLS_CERT`, `SYNCCLIPBOARD_TLS_KEY` | HTTPS PEM certificate and private key paths |
 
-```shell
-sudo systemctl enable --now syncclipboard.service
-```
+CLI options `--port`, `--host`, `--data-dir`, `--config`, and `--urls` take precedence. Restart after changing configuration. HTTPS also accepts the original `Kestrel.Certificates.Default.Path` and `KeyPath` settings. TLS can instead terminate at a reverse proxy. `NODE_ENV=development` and `ASPNETCORE_ENVIRONMENT=Development` also enable Swagger.
 
-### Desktop Client Built-in Server
-Desktop client (Windows/Linux/macOS) has a built-in server, can be configured with GUI.
+Count and time retention limits apply independently. Starred and pinned records are protected. Count cleanup orders records by the later of their access and modification timestamps. Deleted records remain as synchronization tombstones for 30 days. Retention runs every 10 minutes; expired tombstone and orphan cleanup runs every 12 hours. Cleanup also runs at startup.
 
-### WebDAV Server
-  
-Tested server：   
-- [x] [Nextcloud](https://nextcloud.com/)
-- [x] [AList](https://alist.nn.ci/)
-- [x] [InfiniCLOUD](https://infini-cloud.net/en/)
-- [x] [aliyundrive-webdav](https://github.com/messense/aliyundrive-webdav)
+## Migrate existing server data
 
-### S3 Server
-The desktop client supports AWS S3 via the official AWS SDK, and also supports OSS providers that expose an S3-compatible API.  
-When adding an account, choose `S3` and configure:
+1. Stop the .NET server and back up its complete `server/` directory and configuration.
+2. Copy the directory to the new working directory, or point `SYNCCLIPBOARD_DATA_DIR` at it.
+3. Keep the existing `appsettings.json` and start the Bun server.
 
-- `Server Address`: Optional. Leave empty for AWS; set your endpoint for S3-compatible providers.
-- `Region`: Signing region, for example `us-east-1`.
-- `Bucket Name`: Bucket used to store `SyncClipboard.json` and `file/` objects.
-- `Object Prefix`: Optional. Recommended to isolate data with a dedicated prefix (for example `syncclipboard`).
-- `Force Path-Style Addressing`: Recommended for many S3-compatible providers.
-- `Access Key ID` / `Secret Access Key`: Access credentials.
+The original EF Core `server/data/history.db` schema is supported, including databases predating `TransferDataHash`. Startup adds the missing column and lookup indexes. Existing fields, metadata, and relative attachment paths are retained. PascalCase `SyncClipboard.json` files remain readable. Run one server instance per data directory.
 
 ## API
 
-In a standalone server environment, set the environment variable ASPNETCORE_ENVIRONMENT to Development before running the server, or open the server in the desktop client and enable diagnostic mode in settings.
-Then visit `http://ip:port/swagger/index.html` to access the API description page.
+| Method and path | Purpose |
+| --- | --- |
+| `GET /`, `PROPFIND /` | Status and WebDAV compatibility |
+| `GET /api/time`, `GET /api/version` | Server time and protocol version |
+| `GET/PUT /SyncClipboard.json` | Read/publish current clipboard |
+| `PROPFIND/MKCOL/DELETE /file` | Manage staging directory |
+| `PUT /file/{name}` | Stage an attachment |
+| `GET/HEAD /file/{name}` | Retrieve the most recently used committed attachment |
+| `POST /api/history` | Multipart history upload; returns accepted metadata |
+| `POST /api/history/query` | Form query, 50 records per page, including tombstones |
+| `GET /api/history/{Type-Hash}` | History metadata |
+| `GET /api/history/{Type-Hash}/data` | Verified attachment download |
+| `PATCH /api/history/{type}/{hash}` | Update starred, pinned, deletion and version state |
+| `GET /api/history/statistics` | Counts and attachment disk usage |
+| `DELETE /api/history/clear` | Clear history and attachments |
+| `/SyncClipboardHub` | SignalR JSON v1 over WebSocket, SSE or Long Polling |
 
-APIs that do not start with `/api/` are WebDAV-compatible APIs. When implementing clients, calling these APIs can support clipboard synchronization based on both WebDAV servers and official SyncClipboard servers. The key APIs are described below.
+JSON responses use camelCase; input property names are case insensitive. Types are `Text`, `File`, `Image`, and `Group`. Profile identity hashes differ from transfer byte hashes. Transfer SHA-256 uses `transferDataHash` on current profiles and `X-SyncClipboard-Transfer-Data-Hash` on history upload/download. History metadata does not bind a local transfer hash. The original [hash algorithm](docs/Hash.md) is preserved.
 
-### Get Clipboard
-```shell
-GET /SyncClipboard.json
-GET /file/dataName            # optional
+History multipart fields: `type`, `hash`, `text`, `size`, `createTime`, `lastModified`, `lastAccessed`, `starred`, `pinned`, `version`, `isDeleted`, `hasData`, and optional binary `data`. Send `data` last for original protocol compatibility. File/Image `text` is the filename; long-text `text` is a preview and `size` counts UTF-16 code units in the full text.
+
+Queries support `page`, exclusive `before`, inclusive `after`/`modifiedAfter`, `types`, `searchText`, `starred`, and `sortByLastAccessed`. Type filters accept names, comma-separated flags, or numeric masks 0–15. PATCH uses `isDelete`. Within five minutes, conflict resolution compares versions; outside that interval, it compares timestamps. Conflicts return `409` with server state.
+
+Uploads validate both transfer bytes and semantic identity, including ZIP paths and contents. Invalid history attachments return `422` with `code: history_data_invalid`. Downloads recheck transfer bytes; missing or corrupt Group archives can be regenerated from verified extracted files. The notification events are `RemoteProfileChanged` and `RemoteHistoryChanged`.
+
+## Development
+
+```sh
+bun run dev
+bun run check
+bun run build
+bun run test:bundle
 ```
 
-### Upload Clipboard
-```shell
-PUT /file/dataName            # optional
-PUT /SyncClipboard.json
-```
+Tests exercise real HTTP listeners, the official Microsoft SignalR client, and temporary SQLite databases. They cover hashes, uploads, cancellation, recovery, conflicts, retention, and legacy data migration. Local ephemeral ports must be available.
 
-### SyncClipboard.json
-```jsonc
-{
-  "type": "Text",                          // or Image/File/Group, required
-  "hash": "string",                        // optional, empty string is treated as null
-  "text": "string",                        // required
-  "hasData": true,                         // or false, required
-  "dataName": "string",                    // if hasData is true, required
-  "transferDataHash": "string",            // optional
-  "size": 0,                               // optional
-  "syncedAt": "2026-10-09T15:30:00+08:00"  // optional
-}
-```
-
-- All API fields are case-sensitive
-- `text` stores the clipboard preview string, or the complete content of Text type clipboard
-- `hasData` indicates whether an additional file is used to store the complete clipboard information
-  - For Image/File/Group types, `hasData` is always true
-  - For Text type, depending on the original string length, you can optionally use an additional UTF8-encoded `.txt` file to store the complete string. If so, the `text` field only stores the beginning part of the complete string
-- `hash` value is a unique identifier of the clipboard content. For the calculation method, please refer to [docs/Hash.md](docs/Hash.md)
-  - The sender should provide `hash` information whenever possible
-  - When the `hash` value exists, the receiver should verify the consistency between the `hash` information and the clipboard content, and execute the error handling process when inconsistent
-  - When `hash` is empty, or in an environment where `hash` cannot be calculated, you can use the combination of `type`/`text` to simply determine the equality of clipboard content
-- `transferDataHash` is the SHA-256 of the complete byte stream of the actual transfer file, encoded as 64 uppercase hexadecimal characters, and is used to verify transfer file integrity
-  - Use it only when `hasData` is `true`
-- `size` indicates the total byte size of the copied file, or the length of the complete string for Text type clipboard
-- `syncedAt` records when the current remote clipboard was submitted, as an ISO 8601 timestamp with a UTC offset
-  - When the official server receives a clipboard upload, it uses the server's time and ignores the time provided by the client
-  - For WebDAV/S3, the client sets this field when uploading
-  - Client clocks may differ, so this field should not be used to determine concurrent write ordering
-
-### S3 Sync Protocol Specification
-
-For protocol and data format specifications when using S3-compatible object storage as sync backend, please refer to [S3 Adapter Design](docs/S3-Adapter-Design.md).
-
-## Open Source Dependencies
-[NativeNotification](https://github.com/Jeric-X/NativeNotification) 
-[Magick.NET](https://github.com/dlemstra/Magick.NET)  
-[.NET Community Toolkit](https://github.com/CommunityToolkit/dotnet)  
-[H.NotifyIcon](https://github.com/HavenDV/H.NotifyIcon)  
-[WinUIEx](https://github.com/dotMorten/WinUIEx)  
-[moq](https://github.com/moq/moq)  
-[Avalonia](https://avaloniaui.net/)  
-[FluentAvalonia](https://github.com/amwx/FluentAvalonia)  
-[AsyncImageLoader.Avalonia](https://github.com/AvaloniaUtils/AsyncImageLoader.Avalonia)  
-[Vanara](https://github.com/dahall/Vanara)  
-[Tmds.DBus](https://github.com/tmds/Tmds.DBus)  
-[SharpHook](https://github.com/TolikPylypchuk/SharpHook)  
-[Quartz.NET](https://github.com/quartznet/quartznet)   
-
-## Donate
-
-If SyncClipboard helps you, donations are welcome to support ongoing maintenance. View donation details [here](docs/donate.md).
+See the [migration and test mapping](docs/ai_design/bun-server-migration.md). The project retains its MIT license; bundled dependency licenses are in `LICENSES/`.

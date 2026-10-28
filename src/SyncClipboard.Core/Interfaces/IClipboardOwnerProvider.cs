@@ -1,8 +1,0 @@
-using SyncClipboard.Core.Models;
-
-namespace SyncClipboard.Core.Interfaces;
-
-public interface IClipboardOwnerProvider
-{
-    WindowInfo? GetClipboardOwner();
-}

@@ -1,0 +1,30 @@
+name: Server CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.4"
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run test:bundle
+      - uses: actions/upload-artifact@v7
+        with:
+          name: syncclipboard-server
+          path: |
+            dist/index.js
+            appsettings.example.json
+            LICENSE
+            LICENSES/
+      - run: docker build -t syncclipboard-server:test .

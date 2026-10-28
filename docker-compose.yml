@@ -1,0 +1,16 @@
+services:
+  syncclipboard-server:
+    build: .
+    ports:
+      - "5033:5033"
+    environment:
+      SYNCCLIPBOARD_USERNAME: ${SYNCCLIPBOARD_USERNAME:?Set SYNCCLIPBOARD_USERNAME}
+      SYNCCLIPBOARD_PASSWORD: ${SYNCCLIPBOARD_PASSWORD:?Set SYNCCLIPBOARD_PASSWORD}
+      AppSettings__MaxSavedHistoryCount: ${SYNCCLIPBOARD_MAX_HISTORY_COUNT:-1000}
+      AppSettings__HistoryRetentionMinutes: ${SYNCCLIPBOARD_RETENTION_MINUTES:-0}
+    volumes:
+      - server-data:/app/server
+    restart: unless-stopped
+
+volumes:
+  server-data:

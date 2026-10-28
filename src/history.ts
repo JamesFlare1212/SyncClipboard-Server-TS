@@ -175,6 +175,7 @@ export class HistoryService {
   async setCurrent(dto: ProfileDto, signal?: AbortSignal): Promise<void> {
     await this.mutex.run(async () => {
       const now = new Date().toISOString();
+      let consumedUpload: string | undefined;
       let record = dto.hash ? this.database.get(dto.type, dto.hash) : undefined;
       if (record && !record.isDeleted) {
         record.lastModified = now;
@@ -204,6 +205,7 @@ export class HistoryService {
           }
           try {
             await this.profiles.attach(candidate, path, dto.transferDataHash, name, signal);
+            consumedUpload = path;
           } catch (error) {
             checkAbort(signal);
             if (error instanceof HttpError) {
@@ -234,6 +236,9 @@ export class HistoryService {
       this.current = current;
       this.publish(record);
       this.notify("RemoteProfileChanged", current);
+      if (consumedUpload) {
+        await rm(consumedUpload, { force: true });
+      }
     }, signal);
   }
 

@@ -6,6 +6,26 @@ import { loadConfig } from "../src/config";
 import { normalizeHash } from "../src/models";
 
 describe("configuration and SHA-256 compatibility", () => {
+  test("configured HTTP endpoints preserve port 80 across URL configuration sources", async () => {
+    const root = await mkdtemp(join(tmpdir(), "syncclipboard-port-"));
+    try {
+      for (const url of ["http://127.0.0.1:80", "http://127.0.0.1"]) {
+        for (const settings of [{}, { Urls: url }, { Kestrel: { Endpoints: { http: { Url: url } } } }]) {
+          await Bun.write(join(root, "appsettings.json"), JSON.stringify(settings));
+          const env = Object.keys(settings).length ? {} : { ASPNETCORE_URLS: url };
+          expect(loadConfig(root, env).port).toBe(80);
+          expect(loadConfig(root, { ...env, PORT: "5100" }).port).toBe(5100);
+          expect(loadConfig(root, { ...env, PORT: "0" }).port).toBe(0);
+        }
+      }
+      await rm(join(root, "appsettings.json"));
+      expect(loadConfig(root, {}).port).toBe(5033);
+      expect(loadConfig(root, { ASPNETCORE_URLS: "http://127.0.0.1:8080" }).port).toBe(8080);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test("legacy JSON comments and trailing commas, env precedence and retention values", async () => {
     const root = await mkdtemp(join(tmpdir(), "syncclipboard-config-"));
     try {

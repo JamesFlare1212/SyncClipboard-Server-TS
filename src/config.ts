@@ -50,7 +50,7 @@ export function loadConfig(cwd = process.cwd(), env = process.env): Config {
   const envCredentials = !!env.SYNCCLIPBOARD_USERNAME && !!env.SYNCCLIPBOARD_PASSWORD;
   const config: Config = {
     hostname: env.HOST ?? url.hostname,
-    port: integer(env.PORT ?? url.port, url.protocol === "https:" ? 443 : 5033, "PORT", 65535),
+    port: integer(env.PORT ?? url.port, url.protocol === "https:" ? 443 : 80, "PORT", 65535),
     dataDir: resolve(cwd, env.SYNCCLIPBOARD_DATA_DIR ?? "server"),
     username: envCredentials ? env.SYNCCLIPBOARD_USERNAME! : (env.AppSettings__UserName ?? app.UserName ?? "admin"),
     password: envCredentials ? env.SYNCCLIPBOARD_PASSWORD! : (env.AppSettings__Password ?? app.Password ?? "admin"),

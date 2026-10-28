@@ -46,6 +46,21 @@ describe("authenticated HTTP and WebDAV compatibility", () => {
     }
   });
 
+  test("Basic authentication compares exact UTF-8 credentials and rejects different byte lengths", async () => {
+    await using f = await fixture({ username: "用户", password: "p😀:word" });
+    for (const [credentials, expectedStatus] of [
+      ["用户:p😀:word", 200],
+      ["用户:p😈:word", 401],
+      ["用户:p😀:wor", 401],
+      ["用户:p😀:word\0", 401],
+      ["用户:", 401],
+      ["访客:p😀:word", 401],
+    ] as const) {
+      const authorization = `Basic ${Buffer.from(credentials, "utf8").toString("base64")}`;
+      expect((await f.request("/", { headers: { authorization } })).status).toBe(expectedStatus);
+    }
+  });
+
   for (const omitHash of [true, false]) {
     test(`inline profile persists with server timestamp (omit hash: ${omitHash})`, async () => {
       await using f = await fixture();
@@ -121,6 +136,7 @@ describe("authenticated HTTP and WebDAV compatibility", () => {
       const profile = await (await f.request("/SyncClipboard.json")).json();
       expect(profile.type).toBe(name!.toLowerCase().endsWith("png") ? "Image" : "File");
       expect(profile.size).toBe(bytes.length);
+      expect(await Bun.file(join(f.config.dataDir, "file", name!)).exists()).toBe(false);
       const get = await f.request(`/file/${encodeURIComponent(name!)}`);
       expect(new Uint8Array(await get.arrayBuffer())).toEqual(bytes);
       const head = await f.request(`/file/${encodeURIComponent(name!)}`, { method: "HEAD" });
@@ -145,6 +161,7 @@ describe("authenticated HTTP and WebDAV compatibility", () => {
     expect((await f.json("/SyncClipboard.json", "PUT", dto)).status).toBe(404);
     await f.request("/file/file.bin", { method: "PUT", body: "wrong" });
     expect((await f.json("/SyncClipboard.json", "PUT", dto)).status).toBe(400);
+    expect(await Bun.file(join(f.config.dataDir, "file", "file.bin")).text()).toBe("wrong");
     expect(f.history.database.all()).toHaveLength(0);
   });
 
@@ -156,6 +173,7 @@ describe("authenticated HTTP and WebDAV compatibility", () => {
     expect((await f.json("/SyncClipboard.json", "PUT", dto)).status).toBe(200);
     const profile = await (await f.request("/SyncClipboard.json")).json();
     expect(profile.size).toBe(text.length);
+    expect(await Bun.file(join(f.config.dataDir, "file", "long.txt")).exists()).toBe(false);
     expect(await (await f.request(`/api/history/Text-${dto.hash}/data`)).text()).toBe(text);
   });
 
@@ -187,6 +205,7 @@ describe("authenticated HTTP and WebDAV compatibility", () => {
       ).status,
     ).toBe(200);
     const before = await (await f.request("/SyncClipboard.json")).json();
+    expect(await Bun.file(join(f.config.dataDir, "file", "persist.zip")).exists()).toBe(false);
     await f.stop();
     const restarted = createServer(f.config, { cleanup: false });
     try {

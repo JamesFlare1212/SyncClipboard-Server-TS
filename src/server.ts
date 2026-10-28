@@ -5,7 +5,7 @@ import { basename, join } from "node:path";
 import { Readable } from "node:stream";
 import type { Config } from "./config";
 import { HttpError, TransferError } from "./errors";
-import { receiveFile, safeName, safePath, sha256 } from "./files";
+import { receiveFile, safeName, safePath } from "./files";
 import { HistoryService } from "./history";
 import { historyMetadata, historyQuery, historyUpdate, readMultipart } from "./multipart";
 import { normalizeHash, parseProfile, parseProfileId, parseType, toHistoryDto, transferHashHeader } from "./models";
@@ -19,9 +19,9 @@ function authorized(request: Request, config: Config): boolean {
   if (!match) {
     return false;
   }
-  const credentials = Buffer.from(match[1]!, "base64").toString("utf8");
-  const expected = `${config.username}:${config.password}`;
-  return timingSafeEqual(Buffer.from(sha256(credentials)), Buffer.from(sha256(expected)));
+  const credentials = Buffer.from(match[1]!, "base64");
+  const expected = Buffer.from(`${config.username}:${config.password}`, "utf8");
+  return credentials.length === expected.length && timingSafeEqual(credentials, expected);
 }
 
 function fileResponse(path: string, head: boolean, attachment = false, hash?: string): Response {

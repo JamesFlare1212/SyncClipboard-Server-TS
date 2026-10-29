@@ -26,16 +26,19 @@ The JavaScript bundle includes runtime dependencies and local Swagger UI assets.
 ## Docker
 
 ```sh
-docker build -t syncclipboard-server .
+docker pull ghcr.io/jamesflare1212/syncclipboard-server:latest
 docker run -d --name syncclipboard-server \
   -p 5033:5033 \
   -e SYNCCLIPBOARD_USERNAME=myuser \
   -e SYNCCLIPBOARD_PASSWORD=mypassword \
   -v syncclipboard-data:/app/server \
-  --restart unless-stopped syncclipboard-server
+  --restart unless-stopped \
+  ghcr.io/jamesflare1212/syncclipboard-server:latest
 ```
 
 Alternatively, set the two credential variables and run `docker compose up -d --build`. The container runs as the `bun` user; existing bind-mounted data must be writable by that user. Mount configuration at `/app/appsettings.json`.
+
+The image includes a health check that requests the service using its configured port and credentials every 30 seconds, with a 5-second timeout, a 10-second start period, and 3 consecutive failures before marking it `unhealthy`. Run `docker exec syncclipboard-server bun index.js --healthcheck` to check manually. Both HTTP and HTTPS are supported.
 
 Pull requests and master pushes check types, formatting, tests, isolated bundles, and running containers. New runs cancel older runs for the same PR or branch, and jobs have timeouts. Container acceptance covers non-root execution, authentication, attachment transfers, graceful exit, and volume persistence across container recreation.
 

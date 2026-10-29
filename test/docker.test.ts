@@ -37,6 +37,8 @@ test.skipIf(!image)(
         "--detach",
         "--name",
         name,
+        "--health-interval",
+        "1s",
         ...(platform ? ["--platform", platform] : []),
         "--publish",
         "127.0.0.1::5033",
@@ -57,11 +59,14 @@ test.skipIf(!image)(
       while (Date.now() < deadline) {
         try {
           const response = await fetch(url, { signal: AbortSignal.timeout(1000) });
-          if (response.status === 401) {
+          if (
+            response.status === 401 &&
+            (await docker("inspect", "--format", "{{.State.Health.Status}}", name)) === "healthy"
+          ) {
             return;
           }
         } catch {
-          // Container networking can be ready before the server starts accepting requests.
+          // Container networking can be ready before the server and its health check.
         }
         if ((await docker("inspect", "--format", "{{.State.Running}}", name)) !== "true") {
           throw new Error("Container exited before it became ready.");

@@ -16,4 +16,5 @@ RUN mkdir -p /app/server && chown bun:bun /app/server
 USER bun
 VOLUME ["/app/server"]
 EXPOSE 5033
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD ["bun", "index.js", "--healthcheck"]
 CMD ["bun", "index.js"]

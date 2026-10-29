@@ -26,16 +26,19 @@ bun dist/index.js --data-dir ./server
 ## Docker
 
 ```sh
-docker build -t syncclipboard-server .
+docker pull ghcr.io/jamesflare1212/syncclipboard-server:latest
 docker run -d --name syncclipboard-server \
   -p 5033:5033 \
   -e SYNCCLIPBOARD_USERNAME=myuser \
   -e SYNCCLIPBOARD_PASSWORD=mypassword \
   -v syncclipboard-data:/app/server \
-  --restart unless-stopped syncclipboard-server
+  --restart unless-stopped \
+  ghcr.io/jamesflare1212/syncclipboard-server:latest
 ```
 
 也可以设置 `SYNCCLIPBOARD_USERNAME`、`SYNCCLIPBOARD_PASSWORD` 后运行 `docker compose up -d --build`。容器以 `bun` 用户运行；挂载已有宿主机目录时，确保该用户有读写权限。配置文件可挂载到 `/app/appsettings.json`。
+
+镜像内置健康检查：每 30 秒使用当前端口和凭据请求服务，单次超时 5 秒，启动宽限期 10 秒，连续失败 3 次标记为 `unhealthy`。也可运行 `docker exec syncclipboard-server bun index.js --healthcheck` 手动检查；HTTP 和 HTTPS 均支持。
 
 PR 和 master 提交会执行类型、格式、测试、独立 bundle 和容器验收；同一 PR 或分支的新运行会取消旧运行，各任务设有超时。容器验收包含非 root 用户、鉴权、附件读写、退出和重建容器后的数据卷持久化。
 

@@ -8,6 +8,10 @@ on:
   schedule:
     - cron: "37 12 * * 4"
 
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   security-events: write
@@ -15,6 +19,7 @@ permissions:
 jobs:
   analyze:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: github/codeql-action/init@v4

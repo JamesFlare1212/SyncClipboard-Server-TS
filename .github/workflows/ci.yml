@@ -2,8 +2,13 @@ name: Server CI
 
 on:
   push:
+    branches: [master]
   pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: server-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -11,6 +16,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
@@ -19,6 +25,14 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
       - run: bun run test:bundle
+      - name: Build container
+        run: docker build -t syncclipboard-server:test .
+        timeout-minutes: 10
+      - name: Test container
+        run: bun run test:docker
+        env:
+          SYNCCLIPBOARD_TEST_DOCKER_IMAGE: syncclipboard-server:test
+        timeout-minutes: 5
       - uses: actions/upload-artifact@v7
         with:
           name: syncclipboard-server
@@ -27,4 +41,3 @@ jobs:
             appsettings.example.json
             LICENSE
             LICENSES/
-      - run: docker build -t syncclipboard-server:test .

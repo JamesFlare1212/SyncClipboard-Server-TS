@@ -37,7 +37,9 @@ docker run -d --name syncclipboard-server \
 
 Alternatively, set the two credential variables and run `docker compose up -d --build`. The container runs as the `bun` user; existing bind-mounted data must be writable by that user. Mount configuration at `/app/appsettings.json`.
 
-CI checks types, formatting, tests, bundles, and Docker builds. Pushing a `v*` tag runs validation and publishes a GitHub Release bundle plus amd64/arm64 images at `ghcr.io/<owner>/<repository>`.
+Pull requests and master pushes check types, formatting, tests, isolated bundles, and running containers. New runs cancel older runs for the same PR or branch, and jobs have timeouts. Container acceptance covers non-root execution, authentication, attachment transfers, graceful exit, and volume persistence across container recreation.
+
+Pushing a `v*` tag queues a release run. It packages the bundle and SHA-256 checksum, tests both amd64 and arm64 containers, uploads assets to a draft Release, pushes images to `ghcr.io/<owner>/<repository>`, and finally publishes the Release. Failed runs can resume an existing draft; already published releases skip asset and image publication.
 
 ## Configuration
 
@@ -105,8 +107,10 @@ bun run dev
 bun run check
 bun run build
 bun run test:bundle
+docker build -t syncclipboard-server:test .
+SYNCCLIPBOARD_TEST_DOCKER_IMAGE=syncclipboard-server:test bun run test:docker
 ```
 
-Tests exercise real HTTP listeners, the official Microsoft SignalR client, and temporary SQLite databases. They cover hashes, uploads, cancellation, recovery, conflicts, retention, and legacy data migration. Local ephemeral ports must be available.
+Tests exercise real HTTP listeners, the official Microsoft SignalR client, and temporary SQLite databases. They cover hashes, uploads, cancellation, recovery, conflicts, retention, and legacy data migration. SignalR also covers malformed messages, byte limits, timeouts, polling cancellation, and automatic reconnection after a server restart. Local ephemeral ports must be available. Container tests are skipped unless the image variable is set, then require access to Docker. Release preparation tests use a simulated GitHub CLI without changing real releases and skip Windows.
 
 See the [migration and test mapping](docs/ai_design/bun-server-migration.md). The project retains its MIT license; bundled dependency licenses are in `LICENSES/`.

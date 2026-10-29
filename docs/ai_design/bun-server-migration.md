@@ -41,9 +41,11 @@ Group 计算采用实际 `GroupEntry.ToEntryStringAsync` 的 `D|name/\0` / `F|na
 | 共享 HistoryManagerHelper 保留与排序规则、服务器 tombstone/orphan 清理 | `test/retention.test.ts` |
 | 旧 EF 数据库兼容和继续写入 | `test/migration.test.ts` + 原初始化 schema fixture |
 | 新运行时 HTTP/Basic/WebDAV、长文本、并发、查询、重启 | `test/http.test.ts`, `test/history.test.ts` |
-| SignalR 协商、握手、广播、重连、WebSocket/SSE/LongPolling | `test/signalr.test.ts`，使用官方 `@microsoft/signalr` 客户端 |
+| SignalR 协商、握手、广播、重连、WebSocket/SSE/LongPolling | `test/signalr.test.ts`，使用官方 `@microsoft/signalr` 客户端，并覆盖畸形消息、UTF-8 字节限制、真实超时、长轮询取消和服务重启后的自动重连 |
 | 流式上传失败/取消，Swagger 本地资源 | `test/streaming.test.ts` |
 | CLI 参数、进程退出、脱离 node_modules 的单文件构建包 | `test/cli.test.ts`；`bun run test:bundle` 将构建包复制到独立临时目录运行 |
+| 容器产物运行、非 root 权限、附件与数据卷持久化 | `test/docker.test.ts`；设置 `SYNCCLIPBOARD_TEST_DOCKER_IMAGE` 后显式运行，CI 和发布均执行，发布分别验收 amd64/arm64 |
+| 发布资产上传失败后重跑、已公开版本重跑、准备失败阻止后续发布 | `test/release.test.ts`，通过模拟 GitHub CLI 验证草稿准备脚本，不操作真实 Release；Windows 显式跳过 |
 
 客户端历史导入导出、显示/分页 ViewModel、下载队列、S3/WebDAV 远端适配器、系统热键、通知、剪贴板、更新安装和平台 UI 的测试随对应客户端实现删除。纯内部对象复制/延迟加载断言没有逐行复制；服务端实际依赖的行为通过 HTTP 和持久化回归验证。
 
@@ -58,6 +60,8 @@ docker build -t syncclipboard-server .
 ```
 
 本次本地验证：84 个测试通过、0 失败；类型检查、Prettier、冻结 lockfile 安装、构建包独立启动/退出、Compose 配置校验和 `git diff --check` 均通过。测试包含超过 30 秒的长轮询保活验证。未运行 Docker 镜像构建：当前环境无法访问 Docker socket，非交互 sudo 也不可用；CI 中保留镜像构建检查。
+
+后续 CI 增量验证：104 个测试通过，容器测试在未指定镜像时跳过；类型、格式和独立 bundle 测试通过。容器验收已接入普通 CI，并在发布流程分别验证 amd64/arm64；本地仍受 Docker socket 权限限制。发布队列采用 GitHub 当前支持的 [`concurrency.queue: max`](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)，保留所有待运行标签。actionlint 1.7.12 尚不认识该字段，本地静态检查仅忽略这一条 schema 诊断，其余规则照常检查。
 
 ## 实现依据
 

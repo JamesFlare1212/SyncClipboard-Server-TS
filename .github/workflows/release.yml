@@ -4,12 +4,19 @@ on:
   push:
     tags: ["v*"]
 
+concurrency:
+  group: server-release
+  cancel-in-progress: false
+  # Retain pending tag runs instead of replacing them with newer tags.
+  queue: max
+
 permissions:
   contents: read
 
 jobs:
   release:
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
     permissions:
       contents: write
       packages: write
@@ -21,30 +28,70 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
       - run: bun run test:bundle
+      - name: Package server
+        run: |
+          tar -czf syncclipboard-server.tar.gz -C dist index.js -C .. appsettings.example.json LICENSE LICENSES
+          tar -tzf syncclipboard-server.tar.gz > /dev/null
+          sha256sum syncclipboard-server.tar.gz > syncclipboard-server.tar.gz.sha256
       - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
       - uses: docker/setup-buildx-action@v4
+      - name: Build amd64 container for testing
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: syncclipboard-server:test-amd64
+      - name: Test amd64 container
+        run: bun run test:docker
+        env:
+          SYNCCLIPBOARD_TEST_DOCKER_IMAGE: syncclipboard-server:test-amd64
+          SYNCCLIPBOARD_TEST_DOCKER_PLATFORM: linux/amd64
+        timeout-minutes: 5
+      - name: Build arm64 container for testing
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/arm64
+          load: true
+          tags: syncclipboard-server:test-arm64
+      - name: Test arm64 container
+        run: bun run test:docker
+        env:
+          SYNCCLIPBOARD_TEST_DOCKER_IMAGE: syncclipboard-server:test-arm64
+          SYNCCLIPBOARD_TEST_DOCKER_PLATFORM: linux/arm64
+        timeout-minutes: 5
+      - name: Prepare draft release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/prepare-release.sh "$GITHUB_REF_NAME" syncclipboard-server.tar.gz syncclipboard-server.tar.gz.sha256
       - uses: docker/login-action@v4
+        if: steps.release.outputs.published != 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/metadata-action@v5
         id: metadata
+        if: steps.release.outputs.published != 'true'
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=ref,event=tag
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
       - uses: docker/build-push-action@v7
+        if: steps.release.outputs.published != 'true'
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
-      - name: Package server
-        run: tar -czf syncclipboard-server.tar.gz -C dist index.js -C .. appsettings.example.json LICENSE LICENSES
-      - name: Create release
+      - name: Publish release
+        if: steps.release.outputs.published != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" syncclipboard-server.tar.gz --generate-notes --verify-tag
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false

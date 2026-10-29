@@ -37,7 +37,9 @@ docker run -d --name syncclipboard-server \
 
 也可以设置 `SYNCCLIPBOARD_USERNAME`、`SYNCCLIPBOARD_PASSWORD` 后运行 `docker compose up -d --build`。容器以 `bun` 用户运行；挂载已有宿主机目录时，确保该用户有读写权限。配置文件可挂载到 `/app/appsettings.json`。
 
-CI 会执行类型、格式、测试和容器构建检查。推送 `v*` 标签时，发布工作流会测试并发布 GitHub Release 构建包，以及 `ghcr.io/<仓库所有者>/<仓库名>` 的 amd64/arm64 镜像。
+PR 和 master 提交会执行类型、格式、测试、独立 bundle 和容器验收；同一 PR 或分支的新运行会取消旧运行，各任务设有超时。容器验收包含非 root 用户、鉴权、附件读写、退出和重建容器后的数据卷持久化。
+
+推送 `v*` 标签时，发布工作流依次排队执行，先打包并生成 SHA-256 校验文件，再分别验收 amd64/arm64 镜像。构建包上传到草稿 Release 后才推送 `ghcr.io/<仓库所有者>/<仓库名>` 镜像，最后公开 Release。失败重跑会继续更新草稿；已公开的版本会跳过附件和镜像发布。
 
 ## 配置
 
@@ -117,8 +119,10 @@ bun run dev
 bun run check
 bun run build
 bun run test:bundle
+docker build -t syncclipboard-server:test .
+SYNCCLIPBOARD_TEST_DOCKER_IMAGE=syncclipboard-server:test bun run test:docker
 ```
 
-测试使用真实 HTTP 服务、官方 Microsoft SignalR 客户端和临时 SQLite 数据库，覆盖协议、哈希、上传中断、附件恢复、冲突、保留清理和旧数据迁移。测试需要允许监听本机临时端口。
+测试使用真实 HTTP 服务、官方 Microsoft SignalR 客户端和临时 SQLite 数据库，覆盖协议、哈希、上传中断、附件恢复、冲突、保留清理和旧数据迁移。SignalR 还覆盖畸形消息、字节超限、超时、长轮询取消和服务重启后的自动重连。测试需要允许监听本机临时端口；容器测试默认跳过，设置镜像变量后必须能访问 Docker 引擎。发布准备脚本的回归测试使用模拟 GitHub CLI，不操作真实 Release，并在 Windows 上跳过。
 
 服务端迁移范围与原测试对应关系见 [迁移说明](docs/ai_design/bun-server-migration.md)。项目沿用 MIT 许可证；打包依赖的许可证保存在 `LICENSES/`。
